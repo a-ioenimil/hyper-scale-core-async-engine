@@ -1,33 +1,27 @@
-FROM python:3.15.0a6-slim as builder
+FROM python:3.10-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+    UV_COMPILE_BYTECODE=1
 
 COPY pyproject.toml uv.lock ./
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv
-ENV UV_PYTHON_DOWNLOADS=never
+
 RUN uv sync --frozen --no-dev --no-install-project
 
-FROM python:3.15.0a6-slim as runtime
+FROM python:3.10-slim AS runtime
 
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH"
 
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
 COPY --chown=appuser:appuser src ./src
 
